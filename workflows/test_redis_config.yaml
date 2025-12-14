@@ -1,0 +1,46 @@
+name: test_redis_session
+description: Test workflow for Redis session storage selection
+defaults:
+  model: gemini-1.5-flash
+
+context:
+  session_storage: redis
+  connection_string: redis://127.0.0.1:6379/0
+
+workflow:
+  type: sequential
+  agents:
+    - echo_agent
+    - echo_agent_2
+    - echo_agent_3
+
+agents:
+  - name: echo_agent
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Data is safe in Redis"
+    output_key: echo_output
+    context:
+      callbacks:
+        on_tool_start:
+          - debug_callback
+        on_agent_start:
+          - debug_callback
+        on_agent_finish:
+          - debug_callback
+
+  - name: echo_agent_2
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Data is safe in Redis {echo_output}"
+    output_key: echo_output_2
+
+  - name: echo_agent_3
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Data is safe in Redis {echo_output_2} and {echo_output}"
+    output_key: echo_output_3
+    

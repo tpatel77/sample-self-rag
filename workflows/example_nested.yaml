@@ -1,0 +1,40 @@
+# Nested Workflow Example
+# Demonstrates using another workflow as a step
+
+name: parent_workflow
+description: A parent workflow that calls a sub-workflow
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  # Step 1: Prepare input
+  - name: input_preparer
+    type: llm
+    instruction: |
+      Take the user's topic and write a short paragraph about it.
+      Topic: {user_input}
+    output_key: input_text  # Matches expected input of sub-workflow
+
+  # Step 2: Call sub-workflow
+  - name: processor_step
+    type: workflow
+    path: workflows/sub_text_processor.yaml
+    description: "Summarizes and translates the text"
+    # Note: State is shared, so it can access 'input_text' from step 1
+
+  # Step 3: Finalize
+  - name: finalizer
+    type: llm
+    instruction: |
+      We have a translation: {translation}
+      
+      Create a final JSON response with the original topic and the result.
+    output_key: final_result
+
+workflow:
+  type: sequential
+  agents:
+    - input_preparer
+    - processor_step
+    - finalizer

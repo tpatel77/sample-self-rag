@@ -1,0 +1,49 @@
+# Router Workflow Example
+# Demonstrates conditional routing based on state
+
+name: router_workflow
+description: A workflow that routes execution based on a number input
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  # Step 1: Extract number from input
+  - name: number_extractor
+    type: llm
+    instruction: |
+      Extract the number from the user's input.
+      Output ONLY the number as a digit. 
+      If no number is found, output 0.
+    output_key: extracted_number
+
+  # Step 2: Router Agent
+  - name: number_router
+    type: router
+    condition: "int({extracted_number}) > 10"  # Python expression checking state
+    routes:
+      "True": handle_large_number
+      "False": handle_small_number
+
+  # Branch A: Handle large number
+  - name: handle_large_number
+    type: llm
+    instruction: |
+      The number {extracted_number} is greater than 10.
+      Write a short poem about big numbers.
+    output_key: result
+
+  # Branch B: Handle small number
+  - name: handle_small_number
+    type: llm
+    instruction: |
+      The number {extracted_number} is small (<= 10).
+      Write a haiku about small things.
+    output_key: result
+
+# Workflow: Extractor -> Router (which picks the next step)
+workflow:
+  type: sequential
+  agents:
+    - number_extractor
+    - number_router

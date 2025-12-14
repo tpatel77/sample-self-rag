@@ -1,0 +1,30 @@
+name: test_context
+context:
+  scopes: [global, workflow, agent]
+  initial:
+    env: "test"
+
+agents:
+  - name: setter
+    type: tool
+    tool_name: echo_tool
+    context:
+      scope: workflow
+      pre_hook: 
+        set: { status: "started" }
+      post_hook:
+        set: { status: "completed", result: "success" }
+    arguments:
+      message: "Setting context..."
+
+  - name: getter
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Status: {status}, Env: {env}"
+
+workflow:
+  type: sequential
+  agents:
+    - setter
+    - getter

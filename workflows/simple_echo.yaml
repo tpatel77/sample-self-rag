@@ -1,0 +1,29 @@
+# Simple Echo Workflow
+# The simplest possible tool workflow
+
+name: simple_echo_workflow
+description: Echoes a message. Useful for testing UI stability.
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  - name: echo_step
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Hello World from Echo Tool!"
+    output_key: echo_result
+
+  - name: echo_step2
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Hello World from Echo Tool2!"
+    output_key: echo_result
+
+workflow:
+  type: sequential
+  agents:
+    - echo_step
+    - echo_step2

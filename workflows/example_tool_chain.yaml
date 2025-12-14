@@ -1,0 +1,41 @@
+# Pure Tool Chain Example
+# A workflow that uses ONLY deterministic tools (no LLM)
+
+name: tool_chain_workflow
+description: A sequence of tools executing without any LLM intervention
+
+defaults:
+  model: gemini-2.5-flash # Not used, but required by schema validation usually
+
+agents:
+  # Step 1: Get User Info
+  - name: get_user
+    type: tool
+    tool_name: get_env_var
+    arguments:
+      var_name: "USER"
+    output_key: system_user
+
+  # Step 2: Write a greeting file
+  - name: write_greeting
+    type: tool
+    tool_name: write_file
+    arguments:
+      file_path: "output/hello_tool.txt"
+      content: "Hello from the Tool Chain, user {system_user}!"
+    output_key: write_status
+
+  # Step 3: Read it back
+  - name: verify_read
+    type: tool
+    tool_name: read_file
+    arguments:
+      file_path: "output/hello_tool.txt"
+    output_key: read_content
+
+workflow:
+  type: sequential
+  agents:
+    - get_user
+    - write_greeting
+    - verify_read

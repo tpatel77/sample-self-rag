@@ -1,0 +1,67 @@
+# Iterative Improvement Loop
+# A loop workflow that iteratively improves content until quality threshold is met
+
+name: iterative_improvement_loop
+description: A loop workflow that repeatedly improves content based on quality assessment
+
+defaults:
+  model: gemini-2.5-flash
+
+# Agent definitions
+agents:
+  - name: content_improver
+    type: llm
+    instruction: |
+      You are a Content Improvement specialist. Your task is to improve the provided content.
+      
+      **Current Content:**
+      {current_content}
+      
+      **Previous Feedback (if any):**
+      {quality_assessment}
+      
+      If this is the first iteration, improve the user's original input.
+      If there is previous feedback, apply those specific suggestions.
+      
+      Focus on:
+      - Clarity and conciseness
+      - Grammar and style
+      - Structure and flow
+      - Engagement and impact
+      
+      Output the improved content only.
+    description: Improves content based on feedback
+    output_key: current_content
+
+  - name: quality_assessor
+    type: llm
+    instruction: |
+      You are a Quality Assessment specialist. Evaluate the provided content for quality.
+      
+      **Content to Assess:**
+      {current_content}
+      
+      Rate the content on a scale of 1-10 for each criterion:
+      1. Clarity (1-10)
+      2. Grammar (1-10)
+      3. Structure (1-10)
+      4. Engagement (1-10)
+      
+      Calculate the average score.
+      
+      If the average score is 8 or above, respond with:
+      "QUALITY_APPROVED: [average score]/10"
+      
+      If below 8, provide specific improvement suggestions and respond with:
+      "NEEDS_IMPROVEMENT: [average score]/10
+      Suggestions: [your specific suggestions]"
+    description: Assesses content quality and determines if more iterations needed
+    output_key: quality_assessment
+
+# Workflow definition - loop until quality threshold is met
+workflow:
+  type: loop
+  max_iterations: 5
+  agents:
+    - content_improver
+    - quality_assessor

@@ -1,0 +1,103 @@
+# Complex Content Pipeline
+# Demonstrates all ADK framework features: Sequential, Parallel, Router, Loop, Tool
+
+name: complex_content_pipeline
+description: >
+  A comprehensive pipeline that generates content, runs parallel analysis, 
+  conditionally optimizes it in a loop, and saves the final result.
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  # --- Phase 1: Generation ---
+  - name: topic_expander
+    type: llm
+    instruction: "Expand this topic into a 3-point outline: {user_topic}"
+    output_key: outline
+
+  - name: article_drafter
+    type: llm
+    instruction: "Write a short 100-word article based on this outline: {outline}"
+    output_key: draft_content
+
+  # --- Phase 2: Parallel Analysis ---
+  - name: sentiment_analyzer
+    type: llm
+    instruction: |
+      Analyze the sentiment of this text. 
+      Output ONLY a number from 0 (negative) to 10 (positive).
+    output_key: sentiment_score
+
+  - name: grammar_checker
+    type: llm
+    instruction: "List any grammar issues. If none, say 'Clean'."
+    output_key: grammar_report
+
+  - name: parallel_analysis_group
+    type: parallel
+    sub_agents: [sentiment_analyzer, grammar_checker]
+    description: "Runs sentiment and grammar analysis concurrently"
+
+  # --- Phase 3: Conditional Optimization ---
+  
+  # The optimizer loop (if needed)
+  - name: content_improver
+    type: llm
+    instruction: |
+      The sentiment score is low ({sentiment_score}).
+      Rewrite the text to be more positive and enthusiastic.
+      Text: {draft_content}
+    output_key: draft_content
+
+  - name: re_evaluator
+    type: llm
+    instruction: |
+      Analyze the sentiment of this text. 
+      Output ONLY a number from 0 to 10.
+    output_key: sentiment_score
+
+  - name: optimization_loop
+    type: loop
+    sub_agents: [content_improver, re_evaluator]
+    max_iterations: 2
+    description: "Iteratively improves content"
+
+  # The 'all good' pass-through (if no optimization needed)
+  - name: continue_pass
+    type: llm
+    instruction: "Just output 'Quality Check Passed'."
+    output_key: log_message
+
+  # The Router making the decision
+  - name: quality_router
+    type: router
+    condition: "float({sentiment_score}) < 6.0"
+    routes:
+      "True": optimization_loop
+      "False": continue_pass
+    description: "Routes to optimizer if sentiment < 6.0"
+
+  # --- Phase 4: Publishing ---
+  - name: publisher_tool
+    type: tool
+    tool_name: write_file
+    arguments:
+      file_path: "output/final_complex_article.txt"
+      content: |
+        TOPIC: {user_topic}
+        SENTIMENT: {sentiment_score}
+        GRAMMAR: {grammar_report}
+        
+        --- ARTICLE ---
+        {draft_content}
+    output_key: publish_status
+
+workflow:
+  type: sequential
+  agents:
+    - topic_expander
+    - article_drafter
+    - parallel_analysis_group
+    - quality_router
+    - publisher_tool

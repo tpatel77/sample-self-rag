@@ -1,0 +1,25 @@
+# Sub-workflow: Text Processor
+# Designed to be called from another workflow
+
+name: text_processor_subflow
+description: A reusable sub-workflow that summarizes and translates text
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  - name: sub_summarizer
+    type: llm
+    instruction: "Summarize this text in one sentence: {input_text}"
+    output_key: summary
+
+  - name: sub_translator
+    type: llm
+    instruction: "Translate this summary to Spanish: {summary}"
+    output_key: translation
+
+workflow:
+  type: sequential
+  agents:
+    - sub_summarizer
+    - sub_translator

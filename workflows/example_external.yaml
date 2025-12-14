@@ -1,0 +1,47 @@
+# External Agent Example
+# Demonstrates invoking a remote network agent via HTTP
+
+name: remote_agent_workflow
+description: A workflow that sends data to an external API and processes the response
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  # Step 1: Prepare data
+  - name: data_preparer
+    type: llm
+    instruction: |
+      Create a JSON object with a 'message' field based on input: {user_input}
+    output_key: payload
+
+  # Step 2: Call External API (httpbin.org echoes data)
+  - name: remote_echo
+    type: external
+    url: "https://httpbin.org/post"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+      X-Custom-Header: "ADK-Framework"
+    output_key: api_response
+    description: "Sends payload to remote echo service"
+
+  # Step 3: Function to extract data from the echo response
+  # Note: The response from httpbin is a JSON string. 
+  # We might need an LLM to parse it if it's complex, 
+  # or just display it.
+  - name: response_processor
+    type: llm
+    instruction: |
+      The API returned this response:
+      {api_response}
+      
+      Extract the 'data' or 'json' field from it and summarize what was sent back.
+    output_key: final_summary
+
+workflow:
+  type: sequential
+  agents:
+    - data_preparer
+    - remote_echo
+    - response_processor

@@ -1,0 +1,22 @@
+name: example_chain_output
+agents:
+  - name: step1_generator
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Hello World"
+    output_key: greeting_key
+
+  - name: step2_consumer
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      # Reference the output of previous agent using {key} syntax
+      message: "Received: {greeting_key}"
+    output_key: final_result
+
+workflow:
+  type: sequential
+  agents:
+    - step1_generator
+    - step2_consumer

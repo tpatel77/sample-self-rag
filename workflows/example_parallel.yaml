@@ -1,0 +1,71 @@
+# Parallel Data Processing Pipeline
+# A parallel workflow that processes data through multiple analyzers simultaneously
+
+name: parallel_data_analysis
+description: A parallel workflow that runs multiple analysis agents concurrently
+
+defaults:
+  model: gemini-2.5-flash
+
+# Agent definitions
+agents:
+  - name: sentiment_analyzer
+    type: llm
+    instruction: |
+      You are a Sentiment Analysis expert. Analyze the provided text for emotional sentiment.
+      
+      **Text to Analyze:**
+      {user_input}
+      
+      Provide a detailed sentiment analysis including:
+      1. Overall sentiment (positive, negative, neutral, mixed)
+      2. Confidence score (0-100%)
+      3. Key phrases that influenced your analysis
+      4. Emotional undertones (joy, anger, sadness, fear, surprise, etc.)
+      
+      Format your response as a structured analysis.
+    description: Analyzes sentiment of the input text
+    output_key: sentiment_analysis
+
+  - name: key_points_extractor
+    type: llm
+    instruction: |
+      You are a Key Points Extraction specialist. Extract and summarize the main points from the provided text.
+      
+      **Text to Analyze:**
+      {user_input}
+      
+      Provide:
+      1. A bullet-point list of key points (5-10 items)
+      2. The most important takeaway
+      3. Any action items or recommendations mentioned
+      
+      Be concise but comprehensive.
+    description: Extracts key points from input text
+    output_key: key_points
+
+  - name: topic_classifier
+    type: llm
+    instruction: |
+      You are a Topic Classification expert. Classify the provided text into relevant categories.
+      
+      **Text to Analyze:**
+      {user_input}
+      
+      Provide:
+      1. Primary topic/category
+      2. Secondary topics (if applicable)
+      3. Relevant tags/keywords (5-10)
+      4. Subject matter domain (business, technology, science, etc.)
+      
+      Format as a structured classification.
+    description: Classifies input text into topics and categories
+    output_key: topic_classification
+
+# Workflow definition - agents execute in parallel
+workflow:
+  type: parallel
+  agents:
+    - sentiment_analyzer
+    - key_points_extractor
+    - topic_classifier

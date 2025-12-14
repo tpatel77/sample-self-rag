@@ -1,0 +1,57 @@
+# Custom Tool Example Workflow
+# Demonstrates using custom Python tools in a workflow
+
+name: custom_tool_workflow
+description: A workflow using custom Python tools for text processing
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  # Step 1: Generate some content
+  - name: content_generator
+    type: llm
+    instruction: |
+      Write a short paragraph (3-4 sentences) about Python programming.
+      Just write the paragraph, no markdown formatting.
+    output_key: raw_content
+
+  # Step 2: Transform text using custom tool (NO LLM)
+  - name: transform_text
+    type: tool
+    tool_name: text_transform
+    arguments:
+      text: "{raw_content}"
+      operation: "uppercase"
+    output_key: transformed_content
+
+  # Step 3: Count words using custom tool (NO LLM)
+  - name: count_words
+    type: tool
+    tool_name: word_count
+    arguments:
+      text: "{raw_content}"
+    output_key: word_stats
+
+  # Step 4: Summarize the results
+  - name: summarizer
+    type: llm
+    instruction: |
+      Original content:
+      {raw_content}
+      
+      Transformed (uppercase):
+      {transformed_content}
+      
+      Statistics: {word_stats}
+      
+      Provide a brief summary of what was processed.
+    output_key: summary
+
+workflow:
+  type: sequential
+  agents:
+    - content_generator
+    - transform_text
+    - count_words
+    - summarizer

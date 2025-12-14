@@ -1,0 +1,38 @@
+name: test_callbacks
+agents:
+  - name: callback_tester
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Testing callbacks"
+
+    context:
+      scope: agent
+      # Define callbacks (these function names must be registered)
+      #callbacks:
+        # on_agent_start: ["log_agent_start"]
+        # on_agent_finish: ["log_agent_finish"]
+        # on_tool_start: ["log_tool_start"]
+        # on_tool_finish: ["log_tool_finish"]
+    output_key: callback_tester_key
+  
+  - name: callback_tester2
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "{callback_tester_key}"
+    context:
+      scope: agent
+      # Define callbacks (these function names must be registered)
+      # callbacks:
+      #   on_agent_start: ["log_agent_start"]
+        # on_agent_finish: ["log_agent_finish"]
+        # on_tool_start: ["log_tool_start"]
+        # on_tool_finish: ["log_tool_finish"]
+    output_key: callback_tester2
+
+workflow:
+  type: sequential
+  agents:
+    - callback_tester
+    - callback_tester2

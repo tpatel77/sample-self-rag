@@ -1,0 +1,55 @@
+name: test_postgres_session
+description: Test workflow for Postgres session storage
+defaults:
+  model: gemini-1.5-flash
+
+context:
+  session_storage: database
+  # REPLACE THIS with your actual postgres connection string
+  # Format: postgresql+asyncpg://<user>:<password>@<host>:<port>/<dbname>
+  connection_string: postgresql+asyncpg://postgres@localhost:5432/hardipatel
+
+workflow:
+  type: sequential
+  agents:
+    - echo_agent
+    - echo_agent2
+    - echo_agent3
+    - echo_agent4
+
+agents:
+  - name: echo_agent
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Data is safe in Postgres"
+    output_key: echo_output
+    context:
+      callbacks:
+        on_tool_start:
+          - debug_callback
+        on_agent_start:
+          - debug_callback
+        on_agent_finish:
+          - debug_callback
+
+  - name: echo_agent2
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "input to agent2 {echo_output}"
+    output_key: echo_output2
+
+  - name: echo_agent3
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "input to agent3 {echo_output} and {echo_output2}"
+    output_key: echo_output3
+
+  - name: echo_agent4
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "input to agent4 {echo_output3}"
+    output_key: echo_output4

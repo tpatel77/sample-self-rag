@@ -1,0 +1,56 @@
+# Workflow with Tool in the Middle
+# Demonstrates using a tool agent for direct tool execution between LLM agents
+
+name: workflow_with_tool
+description: A workflow that uses a tool agent to save generated content mid-pipeline
+
+defaults:
+  model: gemini-2.5-flash
+
+# Agent definitions
+agents:
+  # Step 1: Generate content using LLM
+  - name: content_generator
+    type: llm
+    instruction: |
+      Generate a short Python script based on the user's request.
+      Output ONLY the Python code, no explanations.
+    description: Generates Python code
+    output_key: generated_code
+
+  # Step 2: Save the code to a file using tool agent (NO LLM)
+  - name: save_to_file
+    type: tool
+    tool_name: write_file
+    arguments:
+      file_path: "output/generated_script.py"
+      content: "{generated_code}"
+    output_key: save_result
+    description: Saves generated code to file
+
+  # Step 3: Analyze the saved code using LLM
+  - name: code_analyzer
+    type: llm
+    instruction: |
+      The following Python code was generated and saved:
+      
+      ```python
+      {generated_code}
+      ```
+      
+      Save status: {save_result}
+      
+      Provide a brief analysis of:
+      1. What the code does
+      2. Any potential improvements
+      3. Confirmation of the save operation
+    description: Analyzes the generated and saved code
+    output_key: analysis
+
+# Workflow: LLM -> Tool -> LLM
+workflow:
+  type: sequential
+  agents:
+    - content_generator
+    - save_to_file
+    - code_analyzer

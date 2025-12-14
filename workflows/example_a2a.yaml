@@ -1,0 +1,31 @@
+# A2A Protocol Example
+# Demonstrates invoking an agent using the Standard A2A Protocol
+
+name: a2a_workflow
+description: Interact with another agent using A2A v1 Protocol
+
+defaults:
+  model: gemini-2.5-flash
+
+agents:
+  # Step 1: Prep input
+  - name: request_builder
+    type: llm
+    instruction: "Prepare a task description for the remote agent based on: {user_input}"
+    output_key: task_description
+
+  # Step 2: Call A2A Agent
+  # Note: pointing to httpbin to verify request envelope structure is sent correctly
+  # In a real scenario, this would be the URL of another ADK agent service.
+  - name: remote_worker
+    type: a2a
+    url: "https://httpbin.org/post"
+    target_agent_id: "agent-007"
+    output_key: worker_response
+    description: "Delegates task to Agent 007"
+
+workflow:
+  type: sequential
+  agents:
+    - request_builder
+    - remote_worker
