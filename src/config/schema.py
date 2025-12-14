@@ -97,6 +97,23 @@ class DefaultsConfig(BaseModel):
     model: str = Field("gemini-2.5-flash", description="Default model to use")
 
 
+class ExitConfig(BaseModel):
+    """Configuration for the ExitAgent."""
+    output_keys: list[str] = Field(
+        default_factory=list, 
+        description="List of possible output keys (for router branches). First found is returned."
+    )
+    emit_full_state: bool = Field(
+        False, 
+        description="If true, emit entire state as JSON instead of specific key"
+    )
+
+
+class LifecycleConfig(BaseModel):
+    """Configuration for lifecycle agents (Start/Exit)."""
+    exit: ExitConfig | None = Field(None, description="ExitAgent configuration")
+
+
 class WorkflowDefinition(BaseModel):
     """Definition of the workflow structure."""
     
@@ -105,6 +122,7 @@ class WorkflowDefinition(BaseModel):
     )
     agents: list[str] = Field(..., description="Ordered list of agent names to execute")
     max_iterations: int | None = Field(None, description="Max iterations for loop workflows")
+    lifecycle: LifecycleConfig | None = Field(None, description="Lifecycle agent configuration")
 
 
 class WorkflowConfig(BaseModel):

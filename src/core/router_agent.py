@@ -116,23 +116,7 @@ class RouterAgent(BaseAgent):
             return
 
         # Run the selected sub-agent
-        # We need to run it using its run_async logic.
-        # Since we are inside an agent, we delegate execution.
-        
-        # We need to pass the context down.
-        # But BaseAgent._run_async_impl takes ctx.
-        # We should call the public run_async? No, that's what Runner calls.
-        # We can call selected_agent.run_async(ctx.session, ...) but better to use the internal method if accessible
-        # or the public method with proper params.
-        
-        # ADK agents (Sequential) call `await sub_agent.run_async(...)`
-        # Let's check how Sequential does it.
-        # It typically iterates and calls run_async.
-        
-        # We must forward the event stream from the sub-agent.
-        async for event in selected_agent.run_async(
-            session=ctx.session,
-            runner=ctx.runner,
-            new_message=ctx.new_message
-        ):
+        # We call _run_async_impl directly, passing the InvocationContext
+        # This is how ADK internally delegates execution to sub-agents
+        async for event in selected_agent._run_async_impl(ctx):
             yield event

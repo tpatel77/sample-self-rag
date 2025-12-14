@@ -2,9 +2,8 @@
 Wrappers for Models and Tools to enable lifecycle callbacks.
 """
 
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable
 import inspect
-from types import MethodType
 
 from google.adk.models import BaseLlm
 from src.core.callbacks.registry import CallbackRegistry

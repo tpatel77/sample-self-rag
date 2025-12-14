@@ -5,7 +5,9 @@ defaults:
 
 context:
   session_storage: redis
-  connection_string: redis://127.0.0.1:6379/0
+  # Connection string is loaded from REDIS_URL environment variable
+  # Alternatively, uncomment below to override:
+  # connection_string: redis://localhost:6379/0
 
 workflow:
   type: sequential

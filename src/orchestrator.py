@@ -14,6 +14,8 @@ from src.config.schema import WorkflowConfig
 
 # Import built-in tools to ensure they're registered
 import src.tools.builtin  # noqa: F401
+import src.callbacks.std_callbacks  # noqa: F401
+import src.callbacks.parsing_callbacks  # noqa: F401
 
 
 class WorkflowOrchestrator:
@@ -60,20 +62,26 @@ class WorkflowOrchestrator:
         
         if self.config and self.config.context:
             session_backend = self.config.context.session_storage
+            # Priority: YAML connection_string > Environment Variable > Error
             conn_str = self.config.context.connection_string
             
         if session_backend == "redis":
+            import os
+            # Check env var if not in YAML
             if not conn_str:
-                raise ValueError("connection_string required for Redis session storage")
+                conn_str = os.environ.get("REDIS_URL")
+            if not conn_str:
+                raise ValueError("Redis URL required. Set REDIS_URL env var or connection_string in YAML.")
             from src.services.redis_session import RedisSessionService
-            # We assume connection_string is REDIS_URL. 
-            # If user wants Write-Through, they might need a way to pass DB URL too.
-            # keeping it simple: Redis Only for now unless connection string has separators.
             self._session_service = RedisSessionService(redis_url=conn_str, app_name=self.app_name)
             
         elif session_backend == "database":
+            import os
+            # Check env var if not in YAML
             if not conn_str:
-                raise ValueError("connection_string required for Database session storage")
+                conn_str = os.environ.get("DATABASE_URL")
+            if not conn_str:
+                raise ValueError("Database URL required. Set DATABASE_URL env var or connection_string in YAML.")
             from google.adk.sessions.database_session_service import DatabaseSessionService
             self._session_service = DatabaseSessionService(db_url=conn_str)
             
@@ -130,22 +138,11 @@ class WorkflowOrchestrator:
                 session_id=session_id,
             )
             
-        # Inject initial state if provided
-        if initial_state and self.builder.state_manager:
-            for k, v in initial_state.items():
-                # We default to 'workflow' scope for run-time injection
-                self.builder.state_manager.set(
-                    scope="workflow",
-                    key=k, 
-                    value=v, 
-                    session_id=session_id
-                )
-                # Sync to ADK Session
-                if session:
-                    session.state[k] = v
-                    # Persist for InMemory
-                    if hasattr(self._session_service, "sessions") and session.id in self._session_service.sessions:
-                        self._session_service.sessions[session.id].state[k] = v
+        # Inject initial state into StartAgent for proper lifecycle handling
+        if initial_state:
+            start_agent = self.builder.get_start_agent()
+            if start_agent:
+                start_agent.initial_state = initial_state
         
         # Create user message
         user_message = types.Content(
@@ -165,10 +162,8 @@ class WorkflowOrchestrator:
                 if hasattr(event.content, 'parts') and event.content.parts:
                     for part in event.content.parts:
                         if hasattr(part, 'text') and part.text:
-                            final_response = part.text  # Use the last response
+                            final_response = part.text  # Use the last response (ExitAgent output)
         
-        return final_response
-    
         return final_response
 
     async def run_stream(

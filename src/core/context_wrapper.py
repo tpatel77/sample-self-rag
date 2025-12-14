@@ -75,9 +75,12 @@ class ContextWrapperAgent(BaseAgent):
             if func:
                 try:
                     if 'context' in func.__code__.co_varnames or 'kwargs' in func.__code__.co_varnames:
+                        # Some callbacks might want richer context
                         func(context=cb_ctx, event_type=event_type, agent_name=self.name)
                     else:
-                        func(event_type=event_type, agent_name=self.name)
+                        # Standard signature: event_type, data (tuple)
+                        # We pass agent_name as part of data tuple for standard consistency with other callbacks
+                        func(event_type=event_type, data=(self.name,))
                 except Exception as e:
                     print(f"Error in callback '{name}': {e}")
         return actions

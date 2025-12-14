@@ -1,0 +1,95 @@
+name: document_processor
+description: Document processor with lifecycle agents demo
+defaults:
+  model: gemini-1.5-flash
+
+context:
+  session_storage: database
+  # Connection string loaded from DATABASE_URL env var
+
+workflow:
+  type: sequential
+  lifecycle:
+    exit:
+      # Multiple output keys for router branches - first found is used
+      # output_keys:
+      #   - content_output   # From "True" route (extract_document_router → process_content)
+      #   - summary
+      emit_full_state: false        # From "False" route (extract_document_router → generate_summary)
+  agents:
+    - extract_metadata
+    - extract_document_router
+    # - process_content
+    # - generate_summary
+
+agents:
+  # Agent 1: Extract and log document metadata
+  - name: extract_metadata
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Received document with type: {metadata}"
+    output_key: metadata_output
+
+  - name: extract_document_router
+    type: router
+    condition: "metadata.get('type') == 'test'"  # Python expression checking state
+    routes:
+      "True": process_content
+      "False": sequential_analysis_summary
+
+  # Agent 2: Process the actual document content
+  - name: process_content
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Processing content: {document}"
+    output_key: content_output
+
+  # Agent 3: Generate a summary combining both outputs
+  - name: generate_summary
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Summary - {metadata_output} | {content_output}"
+    output_key: summary
+
+  - name: sequential_analysis_summary
+    type: sequential
+    sub_agents: [generate_summary, generate_summary2, generate_summary3]
+    description: "Runs sentiment and grammar analysis concurrently"
+
+# Agent 3: Generate a summary combining both outputs
+  - name: generate_summary2
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Summary - {metadata_output} | {content_output} 22222222"
+    output_key: summary2
+
+  - name: generate_summary3
+    type: tool
+    tool_name: echo_tool
+    arguments:
+      message: "Summary - {metadata_output} | {content_output} 33333"
+    output_key: summary3
+# ============================================================
+# How Lifecycle Agents Work:
+# ============================================================
+#
+# StartAgent (automatic):
+#   - Receives initial_state from API (document, metadata)
+#   - Injects into session.state BEFORE workflow runs
+#   - Enables placeholders like {document} to resolve
+#
+# ExitAgent (automatic):
+#   - Runs AFTER all agents complete
+#   - Emits value of last output_key (summary) as final result
+#   - Can be configured with emit_full_state=True for full JSON
+#
+# Test with:
+#   curl -X POST http://localhost:8000/process \
+#     -H "Content-Type: application/json" \
+#     -d '{"document": "Hello World", "metadata": {"type": "test"}}'
+#
+# Expected result: "Summary - Received document... | Processing content..."

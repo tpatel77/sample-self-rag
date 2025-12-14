@@ -5,9 +5,9 @@ defaults:
 
 context:
   session_storage: database
-  # REPLACE THIS with your actual postgres connection string
-  # Format: postgresql+asyncpg://<user>:<password>@<host>:<port>/<dbname>
-  connection_string: postgresql+asyncpg://postgres@localhost:5432/hardipatel
+  # Connection string is loaded from DATABASE_URL environment variable
+  # Alternatively, uncomment below to override:
+  # connection_string: postgresql+asyncpg://user:pass@localhost:5432/dbname
 
 workflow:
   type: sequential

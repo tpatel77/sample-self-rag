@@ -1,0 +1,29 @@
+
+name: callback_test_workflow
+description: Test workflow for parsing callbacks
+defaults:
+  model: gemini-2.0-flash
+
+workflow:
+  type: sequential
+  agents:
+    - json_generator
+
+agents:
+  - name: json_generator
+    type: llm
+    instruction: |
+      You are a data generator.
+      Generate a valid JSON object representing a person.
+      It must have the following fields:
+      - name: A fictional name
+      - age: A random integer
+      - occupation: A random occupation
+      - hobbies: A list of 3 strings
+      
+      Do not include any text outside the JSON block.
+    context:
+      callbacks:
+        on_agent_finish:
+          - parse_json_output
+          - log_model_finish

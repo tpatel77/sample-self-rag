@@ -152,12 +152,24 @@ class WorkflowBuilder:
         # Standardize workflow with Start and Exit agents
         from src.core.lifecycle_agents import StartAgent, ExitAgent
         
+        # Create lifecycle agents (stored for later configuration)
+        self._start_agent = StartAgent()
+        self._exit_agent = ExitAgent()
+        
+        # Apply lifecycle config from YAML if present
+        if self.config and self.config.workflow.lifecycle:
+            lifecycle = self.config.workflow.lifecycle
+            if lifecycle.exit:
+                if lifecycle.exit.output_keys:
+                    self._exit_agent.output_keys = lifecycle.exit.output_keys
+                    self._exit_agent.emit_full_state = lifecycle.exit.emit_full_state
+        
         wrapper = SequentialAgent(
             name=f"{user_agent.name}_lifecycle",
             sub_agents=[
-                StartAgent(),
+                self._start_agent,
                 user_agent,
-                ExitAgent()
+                self._exit_agent
             ],
             description=f"Standardized lifecycle wrapper for {user_agent.name}"
         )
@@ -170,3 +182,11 @@ class WorkflowBuilder:
     def get_root_agent(self) -> BaseAgent | None:
         """Get the built root agent."""
         return self.root_agent
+    
+    def get_start_agent(self):
+        """Get the StartAgent for runtime configuration."""
+        return getattr(self, '_start_agent', None)
+    
+    def get_exit_agent(self):
+        """Get the ExitAgent for runtime configuration."""
+        return getattr(self, '_exit_agent', None)

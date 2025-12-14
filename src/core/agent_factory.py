@@ -10,6 +10,7 @@ from src.core.tool_agent import ToolAgent
 from src.core.router_agent import RouterAgent
 from src.core.external_agent import ExternalAgent
 from src.core.a2a_agent import A2AAgent
+from src.core.a2a_agent import A2AAgent
 
 
 class AgentFactory:
@@ -75,7 +76,11 @@ class AgentFactory:
                 pass 
                 
         # Apply context wrapper (Agent level)
-        if agent_config.context:
+        # Skip this for ContextAwareLlmAgent as it handles context internally
+        from google.adk.agents import LlmAgent
+        is_context_aware = hasattr(agent, "agent_context_config") # Duck typing check or import class
+        
+        if agent_config.context and not is_context_aware:
             from src.core.context_wrapper import ContextWrapperAgent
             agent = ContextWrapperAgent(agent, agent_config.context)
             
@@ -103,11 +108,6 @@ class AgentFactory:
         from google.adk.models import Gemini
         model_obj = Gemini(model=model_name)
         
-        if agent_config.context and agent_config.context.callbacks:
-            cbs = agent_config.context.callbacks
-            if cbs.on_model_start or cbs.on_model_finish:
-                model_obj = CallbackModelWrapper(model_obj, cbs.on_model_start, cbs.on_model_finish)
-
         # Collect tools for this agent
         agent_tools = []
         for tool_name in agent_config.tools:
@@ -127,14 +127,27 @@ class AgentFactory:
                 
                 agent_tools.append(tool_func)
         
-        return LlmAgent(
-            name=agent_config.name,
-            model=model_obj, # Pass wrapped object or string
-            instruction=agent_config.instruction or "",
-            description=agent_config.description or "",
-            output_key=agent_config.output_key,
-            tools=agent_tools,  
-        )
+        # Decide class based on context presence
+        if agent_config.context:
+            from src.core.context_llm_agent import ContextAwareLlmAgent
+            return ContextAwareLlmAgent(
+                name=agent_config.name,
+                model=model_obj,
+                instruction=agent_config.instruction or "",
+                description=agent_config.description or "",
+                output_key=agent_config.output_key,
+                tools=agent_tools,
+                context_config=agent_config.context
+            )
+        else:
+            return LlmAgent(
+                name=agent_config.name,
+                model=model_obj,
+                instruction=agent_config.instruction or "",
+                description=agent_config.description or "",
+                output_key=agent_config.output_key,
+                tools=agent_tools,
+            )
     
     def _create_sequential_agent(self, agent_config: AgentConfig) -> SequentialAgent:
         """Create a sequential workflow agent."""
@@ -156,16 +169,45 @@ class AgentFactory:
             description=agent_config.description or "",
         )
     
-    def _create_loop_agent(self, agent_config: AgentConfig) -> LoopAgent:
-        """Create a loop workflow agent."""
+    def _create_loop_agent(self, agent_config: AgentConfig) -> BaseAgent:
+        """Create a loop workflow agent with automatic state management."""
+        from src.core.lifecycle_agents import LoopInitializationAgent, LoopIncrementAgent
+        
+        loop_key = f"{agent_config.name}_index"
+        
+        # 1. Create sub-agents
         sub_agents = self._create_sub_agents(agent_config.sub_agents)
         
-        return LoopAgent(
-            name=agent_config.name,
-            sub_agents=sub_agents,
+        # 2. Inject Incrementer at start of loop
+        increment_agent = LoopIncrementAgent(
+            name=f"{agent_config.name}_increment",
+            loop_index_key=loop_key
+        )
+        loop_sub_agents = [increment_agent] + sub_agents
+        
+        # 3. Create the actual LoopAgent
+        loop_agent = LoopAgent(
+            name=f"{agent_config.name}_loop",
+            sub_agents=loop_sub_agents,
             description=agent_config.description or "",
             max_iterations=agent_config.max_iterations or 10,
         )
+        
+        # 4. Create Initializer
+        init_agent = LoopInitializationAgent(
+            name=f"{agent_config.name}_init",
+            loop_index_key=loop_key
+        )
+        
+        # 5. Wrap in Sequence [Init, Loop]
+        # This wrapper becomes the "agent" exposed to the user/parent
+        wrapper = SequentialAgent(
+            name=agent_config.name,
+            sub_agents=[init_agent, loop_agent],
+            description=f"Managed loop {agent_config.name}"
+        )
+        
+        return wrapper
     
         return ToolAgent(
             name=agent_config.name,
