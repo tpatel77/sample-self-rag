@@ -14,12 +14,38 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.orchestrator import WorkflowOrchestrator
+from .onboarding_api import router as onboarding_router
+
+from .onboarding_api import router as onboarding_router, db
 
 app = FastAPI(
     title="RAG Document Processor",
     description="API for processing documents using ADK workflows",
     version="1.0.0"
 )
+
+# Include the onboarding/onfiguration endpoints
+app.include_router(onboarding_router, prefix="/api/v1")
+
+@app.on_event("startup")
+async def startup():
+    await db.connect()
+    # Initialize Schema
+    try:
+        schema_path = Path(__file__).parent.parent / "schema.sql"
+        if schema_path.exists():
+            with open(schema_path, "r") as f:
+                schema_sql = f.read()
+            # asyncpg execute can handle multiple statements if simple, but fetch/execute might splitting issues.
+            # Using execute for script
+            await db.execute(schema_sql)
+            print("Schema initialized.")
+    except Exception as e:
+        print(f"Warning: Schema initialization failed: {e}")
+
+@app.on_event("shutdown")
+async def shutdown():
+    await db.disconnect()
 
 # Path to the workflow YAML
 WORKFLOW_PATH = Path(__file__).parent / "document_processor.yaml"
